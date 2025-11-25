@@ -7,31 +7,42 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Instalar dependências
+      - name: Build da imagem Docker (etapa BUILD)
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          docker build -t devops-api:${{ github.sha }} .
 
-      - name: Rodar Testes (host)
-        run: |
-          python -m unittest -v
+  test:
+    runs-on: ubuntu-latest
+    needs: build   
 
-      - name: Build da imagem Docker
-        run: |
-          docker build -t devops-api .
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-      - name: Rodar testes dentro do Docker
+      - name: Build da imagem Docker para testes
         run: |
-          docker run --rm devops-api python -m unittest -v
+          docker build -t devops-api-test:${{ github.sha }} .
+
+      - name: Rodar testes dentro do container Docker (etapa TEST)
+        run: |
+          docker run --rm devops-api-test:${{ github.sha }} python -m unittest -v
+
+  
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test   # só roda se os testes passarem
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Etapa de Deploy (documentação)
+        run: |
+          echo "Fase DEPLOY do pipeline."
+          echo "O deploy real em produção é feito pelo Render a cada push na branch main,"
+          echo "utilizando o Dockerfile deste repositório."
