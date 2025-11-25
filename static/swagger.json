@@ -5,10 +5,7 @@
     "version": "1.0",
     "description": "Documentação da API do laboratório de criação de APIs"
   },
-  "host": "localhost:1313",
-  "schemes": [
-    "http"
-  ],
+  "basePath": "/",
   "paths": {
     "/": {
       "get": {
