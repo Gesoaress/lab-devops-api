@@ -1,12 +1,14 @@
+import os
 from flask import Flask, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 
 app = Flask(__name__)
 
-# Configuração do JWT
-app.config['JWT_SECRET_KEY'] = 'your_secret_key'
+# Configuração do JWT vindo de variável de ambiente (com valor padrão)
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your_secret_key')
 jwt = JWTManager(app)
+
 
 ### Swagger UI ###
 SWAGGER_URL = '/swagger'
