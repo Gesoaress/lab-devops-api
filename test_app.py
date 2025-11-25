@@ -23,7 +23,7 @@ class APITestCase(unittest.TestCase):
 
         data = resp.get_json()
         self.assertIn("message", data)
-        self.assertEqual(data["message"], "API is running")
+        self.assertEqual(data["message"], "API is running Eu estava do teu lado")
 
     def test_items_retorna_lista_de_tres_itens(self):
         """Garante que /items retorna uma lista com 3 itens específicos"""
