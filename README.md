@@ -1,222 +1,194 @@
-# 🚀 Projeto DevOps -- Flask API com JWT, Docker, Testes e Deploy no Render
+# 🚀 Flask DevOps API – Docker • Unittest • GitHub Actions • Render
 
-Este projeto foi desenvolvido como parte do desafio final da disciplina
-de DevOps, aplicando os principais conceitos da cultura DevOps:
-**Build**, **Test** e **Deploy**.
+Este projeto implementa uma API Flask completa, com autenticação JWT, documentação Swagger, testes automatizados, containerização via Docker e pipeline CI/CD com três jobs separados: **build**, **test** e **deploy**.
 
-A aplicação consiste em uma API Flask simples com autenticação JWT,
-documentada com Swagger UI, testada com `unittest`, empacotada em
-Docker, validada por CI no GitHub Actions e publicada automaticamente no
-Render (CD).
+O deploy final é realizado automaticamente pela plataforma **Render**, sempre que há um push na branch `main`.
 
-------------------------------------------------------------------------
+---
 
-# 🌐 Acesso à API em Produção
+# 📌 Acesso à Aplicação
 
-  Recurso          URL
-  ---------------- ----------------------------------------------
-  **API Online**   https://lab-devops-api.onrender.com
-  **Swagger UI**   https://lab-devops-api.onrender.com/swagger/
+- 🌐 **API em Produção:**  
+  https://lab-devops-api.onrender.com
 
-------------------------------------------------------------------------
+- 📘 **Swagger UI (Documentação):**  
+  https://lab-devops-api.onrender.com/swagger/
 
-# 📁 Estrutura do Projeto
+---
 
-    lab-devops-api/
-    ├── app.py
-    ├── static/
-    │   └── swagger.json
-    ├── test_app.py
-    ├── requirements.txt
-    ├── Dockerfile
-    ├── docker-compose.yml
-    └── .github/
-        └── workflows/
+# 📂 Estrutura do Projeto
+
+```
+lab-devops-api/
+ ├── app.py
+ ├── test_app.py
+ ├── requirements.txt
+ ├── Dockerfile
+ ├── docker-compose.yml
+ ├── static/
+ │    └── swagger.json
+ └── .github/
+      └── workflows/
             └── ci.yml
-
-------------------------------------------------------------------------
-
-# 🔧 1. Tecnologias Utilizadas
-
--   **Flask 2.3.2**
--   **JWT (Flask-JWT-Extended)**
--   **Swagger UI**
--   **Python 3.9**
--   **Docker / Docker Compose**
--   **GitHub Actions (CI)**
--   **Render (CD -- Deploy automático)**
--   **Unittest**
-
-------------------------------------------------------------------------
-
-# 🧪 2. Testes Automatizados (`unittest`)
-
-Foram implementados 6 testes cobrindo:
-
-✔ `/` --- status e mensagem\
-✔ `/items` --- integridade da lista\
-✔ `/login` --- geração de token JWT\
-✔ `/protected` --- rota protegida com token válido\
-✔ `/protected` --- acesso negado sem token\
-✔ Rota inexistente --- retorno `404`
-
-### Rodar testes localmente:
-
-``` bash
-python -m unittest -v
 ```
 
-### Rodar testes via Docker:
+---
 
-``` bash
-docker run --rm devops-api python -m unittest -v
-```
+# ⚙️ Tecnologias Utilizadas
 
-------------------------------------------------------------------------
+- **Python 3.9**
+- **Flask**
+- **JWT (Flask-JJWT-Extended)**
+- **Swagger UI**
+- **Docker**
+- **Unittest**
+- **GitHub Actions – CI/CD**
+- **Render – Deploy automático**
 
-# 📦 3. Build e Execução com Docker
+---
 
-### Criar imagem:
+# 🧪 Testes Automatizados (unittest + Docker)
 
-``` bash
+Todos os testes são executados **dentro do Docker**, garantindo que o ambiente é idêntico ao de produção.
+
+Os testes cobrem:
+
+- `/` → status da API  
+- `/items` → retorno da lista  
+- `/login` → geração de JWT  
+- `/protected` → token válido e inválido  
+- Rota inexistente → retorna 404  
+
+Arquivo: `test_app.py`
+
+---
+
+# 📦 Docker
+
+### 🔧 Build da imagem
+
+```bash
 docker build -t devops-api .
 ```
 
-### Executar container:
+### ▶️ Executar container localmente
 
-``` bash
+```bash
 docker run -p 1313:1313 devops-api
 ```
 
-### Usando Docker Compose:
+---
 
-``` bash
-docker compose up --build
+# 🧬 Pipeline CI/CD (GitHub Actions)
+
+O pipeline é composto por **3 jobs independentes**, seguindo o ciclo DevOps:
+
+```
+BUILD → TEST → DEPLOY
 ```
 
-------------------------------------------------------------------------
+---
 
-# 🔄 4. Pipeline CI -- GitHub Actions
+# 🛠️ Arquivo completo do workflow (ci.yml)
 
-Arquivo: `.github/workflows/ci.yml`
+```yaml
+name: CI - Flask DevOps API
 
-O CI executa:
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-1.  Instala dependências
-2.  Roda os testes (`unittest`)
-3.  Build da imagem Docker
-4.  Executa os testes *dentro do container*
+jobs:
+  # ========================
+  # 1) JOB DE BUILD
+  # ========================
+  build:
+    runs-on: ubuntu-latest
 
-O deploy só é acionado após o CI passar com sucesso.
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-------------------------------------------------------------------------
+      - name: Build da imagem Docker
+        run: |
+          docker build -t devops-api:${{ github.sha }} .
 
-# 🚀 5. Deploy Contínuo (CD) -- Render
+  # ========================
+  # 2) JOB DE TEST
+  # ========================
+  test:
+    runs-on: ubuntu-latest
+    needs: build
 
-A aplicação é publicada automaticamente no Render quando há push na
-branch `main`.
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-O Render utiliza:
+      - name: Build da imagem Docker para testes
+        run: |
+          docker build -t devops-api-test:${{ github.sha }} .
 
--   Dockerfile como blueprint
+      - name: Rodar testes dentro do Docker
+        run: |
+          docker run --rm devops-api-test:${{ github.sha }} python -m unittest -v
 
--   Porta exposta `1313`
+  # ========================
+  # 3) JOB DE DEPLOY
+  # ========================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
--   Variável de ambiente:
+    steps:
+      - name: Fase de Deploy
+        run: |
+          echo "Deploy feito automaticamente pelo Render."
+```
 
-        JWT_SECRET_KEY=super-secret-key-devops
+---
 
-API acessível em produção:
+# 📘 Swagger
 
-👉 https://lab-devops-api.onrender.com\
-👉 https://lab-devops-api.onrender.com/swagger/
+A documentação está no arquivo:
 
-------------------------------------------------------------------------
+```
+static/swagger.json
+```
 
-# 🔑 6. Como utilizar autenticação JWT no Swagger
+E acessível em:
 
-### 1. Vá até a rota `/login`
+https://lab-devops-api.onrender.com/swagger/
 
-Clique em **Execute**\
-Ela retorna:
+---
 
-``` json
+# 🔐 Autenticação JWT
+
+A rota `/login` retorna o token:
+
+```json
 {
-  "access_token": "<seu_token>"
+  "access_token": "<TOKEN>"
 }
 ```
 
-### 2. Clique no botão **Authorize**
+Para acessar `/protected`, é obrigatório enviar:
 
-Cole assim:
-
-    Bearer <token>
-
-### 3. Agora abra `/protected`
-
-Clique em **Execute**
-
-Retorno esperado:
-
-``` json
-{
-  "message": "Protected route"
-}
+```
+Authorization: Bearer <TOKEN>"
 ```
 
-Autenticação funcionando! 🔥
+---
 
-------------------------------------------------------------------------
+# 🧾 Conclusão
 
-# 🛠 7. Arquivos Principais
+Este projeto demonstra um ambiente DevOps completo, estruturado com:
 
-### `Dockerfile`
-
-Empacota a aplicação para rodar em produção.
-
-### `docker-compose.yml`
-
-Ambiente de desenvolvimento.
-
-### `test_app.py`
-
-Testes automatizados.
-
-### `swagger.json`
-
-Documentação da API (sem host fixo --- compatível com ambiente local e
-nuvem).
-
-------------------------------------------------------------------------
-
-# 📈 8. Fluxo CI/CD -- DevOps
-
-    Git Push →
-        GitHub Actions (CI):
-            - Install
-            - Test
-            - Docker Build
-            - Test no Docker
-        →
-    Render (CD):
-        - Build da imagem
-        - Deploy automático
-        - API online
-
-------------------------------------------------------------------------
-
-# 👤 Autor
-
-**Geovane Soares da Silva**\
-Github: https://github.com/Gesoaress\
-Projeto: https://github.com/Gesoaress/lab-devops-api
-
-------------------------------------------------------------------------
-
-# 🎯 Conclusão
-
-Este projeto demonstra um pipeline DevOps completo, aplicando práticas
-modernas de integração contínua, entrega contínua, testes automatizados,
-containerização com Docker e deploy em nuvem com Render.\
-O resultado é uma API estável, testada, versionada, automatizada e
-disponível publicamente.
+- Build → Test → Deploy  
+- Testes isolados no Docker  
+- Deploy automático no Render  
+- Documentação Swagger  
+- Autenticação JWT  
+- Pipeline CI/CD organizado e profissional  
